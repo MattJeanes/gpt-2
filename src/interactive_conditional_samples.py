@@ -52,7 +52,10 @@ def interact_model(
     elif length > hparams.n_ctx:
         raise ValueError("Can't get samples longer than window size: %s" % hparams.n_ctx)
 
-    with tf.Session(graph=tf.Graph()) as sess:
+    config = tf.ConfigProto()
+    config.gpu_options.allow_growth = True
+    config.log_device_placement = True
+    with tf.Session(graph=tf.Graph(), config=config) as sess:
         context = tf.placeholder(tf.int32, [batch_size, None])
         np.random.seed(seed)
         tf.set_random_seed(seed)
@@ -67,11 +70,32 @@ def interact_model(
         ckpt = tf.train.latest_checkpoint(os.path.join('models', model_name))
         saver.restore(sess, ckpt)
 
+        last_text = ""
         while True:
             raw_text = input("Model prompt >>> ")
+            lines = []
+            using_last_text = False
             while not raw_text:
+                if last_text:
+                    raw_text = last_text
+                    print("Using previous input: " + last_text)
+                    using_last_text = True
+                    break
                 print('Prompt should not be empty!')
                 raw_text = input("Model prompt >>> ")
+            lines.append(raw_text)
+            while True:
+                if using_last_text:
+                    break
+                line = input()
+                if line:
+                    lines.append(line)
+                else:
+                    break
+            raw_text = '\n'.join(lines)
+            last_text = raw_text
+            print('Generating..')
+            
             context_tokens = enc.encode(raw_text)
             generated = 0
             for _ in range(nsamples // batch_size):
