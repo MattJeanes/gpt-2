@@ -1,0 +1,11 @@
+.git*
+.vscode
+local.settings.json
+test
+.venv
+/checkpoint
+/models/117M
+/models/345M
+/models/boys
+/samples
+/data
