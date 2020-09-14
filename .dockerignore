@@ -1,7 +1,7 @@
-models/117M
-models/345M
-models/boys
+models
 samples
 checkpoint
 data
 generate
+.venv
+.vscode
