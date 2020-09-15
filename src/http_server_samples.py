@@ -10,6 +10,7 @@ import sys
 import gc
 import numpy as np
 import tensorflow as tf
+import re
 import flask
 from flask import request, jsonify, make_response
 tf.logging.set_verbosity(tf.logging.ERROR)
@@ -35,6 +36,8 @@ context = None
 output = None
 enc = None
 
+clearNewLines = re.compile(r'^\n+', flags=re.S)
+
 app = flask.Flask(__name__)
 # app.config["DEBUG"] = True
 
@@ -44,7 +47,10 @@ def home():
     raw_text = request.json.get('text', '')
     model_name = request.json.get('model', '')
     if len(raw_text) == 0:
+        no_input = True
         raw_text = '<|endoftext|>'
+    else:
+        no_input = False
     if model_name != current_model_name:
         load_model(model_name)
     context_tokens = enc.encode(raw_text)
@@ -56,6 +62,8 @@ def home():
         for i in range(batch_size):
             generated += 1
             text = enc.decode(out[i])
+            if no_input:
+                text = clearNewLines.sub('', text)
             print("Input: " + raw_text)
             print("=" * 40 + " SAMPLE " + str(generated) + " " + "=" * 40)
             print(text)
