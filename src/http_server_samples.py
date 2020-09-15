@@ -36,8 +36,6 @@ context = None
 output = None
 enc = None
 
-clearNewLines = re.compile(r'^\n+', flags=re.S)
-
 app = flask.Flask(__name__)
 # app.config["DEBUG"] = True
 
@@ -63,7 +61,7 @@ def home():
             generated += 1
             text = enc.decode(out[i])
             if no_input:
-                text = clearNewLines.sub('', text)
+                text = text.lstrip()
             print("Input: " + raw_text)
             print("=" * 40 + " SAMPLE " + str(generated) + " " + "=" * 40)
             print(text)
