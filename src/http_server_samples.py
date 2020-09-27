@@ -11,6 +11,7 @@ import gc
 import numpy as np
 import tensorflow as tf
 import re
+from threading import Lock
 import flask
 from flask import request, jsonify, make_response
 tf.logging.set_verbosity(tf.logging.ERROR)
@@ -35,6 +36,7 @@ sess = None
 context = None
 output = None
 enc = None
+lock = Lock()
 
 app = flask.Flask(__name__)
 # app.config["DEBUG"] = True
@@ -42,35 +44,36 @@ app = flask.Flask(__name__)
 
 @app.route('/api/generate', methods=['POST'])
 def home():
-    raw_text = request.json.get('text', '')
-    model_name = request.json.get('model', '')
-    if len(raw_text) == 0:
-        no_input = True
-        raw_text = '<|endoftext|>'
-    else:
-        no_input = False
-    if model_name != current_model_name:
-        load_model(model_name)
-    context_tokens = enc.encode(raw_text)
-    generated = 0
-    for _ in range(nsamples // batch_size):
-        out = sess.run(output, feed_dict={
-            context: [context_tokens for _ in range(batch_size)]
-        })[:, len(context_tokens):]
-        for i in range(batch_size):
-            generated += 1
-            text = enc.decode(out[i])
-            if no_input:
-                text = text.lstrip()
-            print("Input: " + raw_text)
-            print("=" * 40 + " SAMPLE " + str(generated) + " " + "=" * 40)
-            print(text)
-            return make_response(
-                jsonify(
-                    {"text": text}
-                ),
-                200
-            )
+    with lock:
+        raw_text = request.json.get('text', '')
+        model_name = request.json.get('model', '')
+        if len(raw_text) == 0:
+            no_input = True
+            raw_text = '<|endoftext|>'
+        else:
+            no_input = False
+        if model_name != current_model_name:
+            load_model(model_name)
+        context_tokens = enc.encode(raw_text)
+        generated = 0
+        for _ in range(nsamples // batch_size):
+            out = sess.run(output, feed_dict={
+                context: [context_tokens for _ in range(batch_size)]
+            })[:, len(context_tokens):]
+            for i in range(batch_size):
+                generated += 1
+                text = enc.decode(out[i])
+                if no_input:
+                    text = text.lstrip()
+                print("Input: " + raw_text)
+                print("=" * 40 + " SAMPLE " + str(generated) + " " + "=" * 40)
+                print(text)
+                return make_response(
+                    jsonify(
+                        {"text": text}
+                    ),
+                    200
+                )
 
 
 def load_model(model_name):
